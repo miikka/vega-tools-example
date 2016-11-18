@@ -59,14 +59,14 @@
 
 (defn parse-input []
   (let [{:keys [input]} @app-state]
-    (swap! app-state assoc :chart nil)
+    (swap! app-state assoc :chart nil :error nil)
     (-> (reader/read-string input)
         (vega-tools/validate-and-parse)
-        (p/catch #(js/alert (str "Unable to parse spec:\n\n" %)))
+        (p/catch #(swap! app-state assoc :error %))
         (p/then #(swap! app-state assoc :chart %)))))
 
 (defn main []
-  (let [{:keys [input chart]} @app-state]
+  (let [{:keys [input error chart]} @app-state]
     [:div
      [:h1 "vega-tools example"]
      [:div.container-fluid
@@ -76,9 +76,12 @@
         {:default-value input
          :on-change #(swap! app-state assoc :input (-> % .-target .-value))}]]
       [:div.col-md-6
-       (if chart
-         [vega-chart {:chart chart}]
-         "Processing...")]]]))
+       (cond
+         error [:div
+                [:h2 "Validation error"]
+                [:pre (with-out-str (pprint/pprint error))]]
+         chart [vega-chart {:chart chart}]
+         :else "Processing...")]]]))
 
 (defn start! []
   (js/console.log "Starting the app")
